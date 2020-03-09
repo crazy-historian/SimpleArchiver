@@ -15,7 +15,7 @@
 string get_string(const char *in)
 {
     string cmd;
-    int len = strlen(in) + 1;
+    uint len = strlen(in) + 1;
     cmd = malloc(len);
     snprintf(cmd, len,"%s", in);
     return cmd;
@@ -24,10 +24,10 @@ string get_string(const char *in)
 string create_new_path(string file_name, string dir_name)
 {
     string path;
-    int len = strlen(dir_name)+1;
+    uint len = strlen(dir_name)+1;
     path = malloc(len * 2);
     strcpy(path, dir_name);
-    strcat(path, "/");
+    strcat(path, "\\");
     strcat(path, file_name);
     return path;
 }
@@ -38,30 +38,33 @@ string create_new_path(string file_name, string dir_name)
  *  2. destructor
  *  3. add info about next file in directory to archive header
  *  4. compute size of current file
+ *  5. init data attributes of next file in directory
  *
  */
 
-HeaderRecord* HeaderRecord_creation (string name, string  address,
-                                    void* destructor, void* add, void* compute_file_size)
+HeaderRecord* HeaderRecord_creation (void* destructor, void* add, void* compute_file_size, void* init_new_file)
 {
     HeaderRecord* new = malloc(sizeof(HeaderRecord));
+    new->file_name = NULL;
+    new->file_address = NULL;
+    new->number_of_bytes = 0;
     new->compute_file_size = compute_file_size;
-    new->name = name;
-    new->address = address;
     new->destructor = destructor;
     new->add_to_output = add;
-    new->compute_file_size(new, name);
-
+    new->init_next_file = init_new_file;
     return new;
 }
-void destroy_record(HeaderRecord* record)
+void HeaderRecord_destruction(HeaderRecord* record)
 {
     printf("\nDestroy record\n");
     free(record);
 }
 
 void add_to_record(HeaderRecord* self, FILE *outfile)
-{ fprintf(outfile, ("%s %s %lu\n"), self->name, self->address, self->number_of_bytes); }
+{
+    printf(("%s||%s||%lu\n"), self->file_name, self->file_address, self->number_of_bytes);
+    fprintf(outfile, ("%s||%s||%lu\n"), self->file_name, self->file_address, self->number_of_bytes);
+}
 
 void compute_file_size(HeaderRecord *self, string file_name)
 {
@@ -70,14 +73,30 @@ void compute_file_size(HeaderRecord *self, string file_name)
     fseek(current_file, SEEK_SET, SEEK_END);
     uint number = ftell(current_file);
     self->number_of_bytes = number;
-    printf("Tne %s size is %lu", file_name, number);
     fclose(current_file);
 
 }
-// zziper methods
 
-Zziper* Zziper__creation(void* searcher, void* destroy)
-{   Zziper* new = malloc(sizeof(Zziper));
+void init_next_file(HeaderRecord* self, string file_name, string address)
+{
+    self->file_name = file_name;
+    self->file_address = address;
+    string full_file_name = create_new_path(file_name, address);
+    self->compute_file_size(self, full_file_name);
+}
+/*
+ *  Zipper methods:
+ *
+ *  1. constructor
+ *  2. destructor
+ *  3. recursive list traversal
+ *
+ */
+
+Zziper* Zziper__creation(HeaderRecord* record, void* searcher, void* destroy)
+{
+    Zziper* new = malloc(sizeof(Zziper));
+    new->h_record = record;
     new->files = (string*) malloc(sizeof(string));
     new->number_of_files = 0;
     new->archive_name = NULL;
@@ -87,10 +106,11 @@ Zziper* Zziper__creation(void* searcher, void* destroy)
     new->destructor = destroy;
     return new;
 }
-void Zziper_destroy(Zziper* record)
+void Zziper_destruction(Zziper* zip)
 {
     printf("\nDestroy Zziper\n");
-    free(record);
+    printf("Files: %lu; Bytes: %lu", zip->number_of_files, zip->bytes);
+    free(zip);
 }
 
 void list_directory(Zziper* self, string dir_name, FILE *outfile)
@@ -98,7 +118,7 @@ void list_directory(Zziper* self, string dir_name, FILE *outfile)
     DIR *directory;
     directory = opendir(dir_name);
     struct dirent *dir_record;
-    HeaderRecord* record;
+    HeaderRecord* record = self->h_record;
 
     if (directory)
     {
@@ -108,16 +128,16 @@ void list_directory(Zziper* self, string dir_name, FILE *outfile)
             {
                 if (dir_record->d_type == DT_DIR)
                 {
-                    printf("%s %s \n", "New level of recursion:", dir_record->d_name);
                     string path = create_new_path(dir_record->d_name, dir_name);
                     list_directory(self, path, outfile);
                 }
                 else
                 {
-                    string file_name = create_new_path(dir_record->d_name, dir_name);
-                    record = HeaderRecord_creation(file_name, dir_name,
-                            &destroy_record, &add_to_record, &compute_file_size);
-                    record->destructor(record);
+                    record->init_next_file (record, dir_record->d_name, dir_name);
+                    record->add_to_output (record, outfile);
+
+                    self->number_of_files++;
+                    self->bytes += record->number_of_bytes;
 
                 }
 
@@ -131,7 +151,7 @@ void repr (Zziper* self)
 {
     printf("\nThe list of scanned files\n");
 
-    for (int i=0; i < self->number_of_files; i++)
+    for (uint i=0; i < self->number_of_files; i++)
         printf("%s\n", self->files[i]);
 
 }
