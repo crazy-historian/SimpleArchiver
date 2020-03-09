@@ -4,6 +4,7 @@
 
 #include "zziper.h"
 
+// string methods
 
 string get_string(const char *in)
 {
@@ -13,6 +14,9 @@ string get_string(const char *in)
     snprintf(cmd, len,"%s", in);
     return cmd;
 }
+
+// zziper methods
+
 void Zziper__init(Zziper* self)
 {
     self->files = (string*) malloc(sizeof(string));
@@ -20,16 +24,32 @@ void Zziper__init(Zziper* self)
     self->file_name = NULL;
     self->path = NULL;
 }
-void InfoFile_add(InfoFile *self, string name, uint number, string  address)
+
+/* HeaderRecord methods:
+ *
+ *  1. constructor
+ *  2. destructor
+ *  3. add info about next file to header
+ */
+
+HeaderRecord* HeaderRecord_creation (uint number, string name, string  address, void* destructor, void* add)
 {
-    self->name = name;
-    self->address = address;
-    self->number_of_bytes = number;
+    HeaderRecord* new = malloc(sizeof(HeaderRecord));
+    new->number_of_bytes = number;
+    new->name = name;
+    new->address = address;
+    new->destructor = destructor;
+    new->add_to_output = add;
+
+    return new;
 }
+void destroy_record(HeaderRecord* record)
+{free(record);}
 
-void File_write(InfoFile* self, FILE *outfile)
-{ fprintf(outfile, ("%s %s %lu"), self->name, self->address, self->number_of_bytes); }
+void add_to_record(HeaderRecord* self, FILE *outfile)
+{ fprintf(outfile, ("%s %s %lu\n"), self->name, self->address, self->number_of_bytes); }
 
+// zziper methods
 void list_directory(Zziper* self, string dir_name, FILE *outfile)
 {
     string file_name;
@@ -37,6 +57,7 @@ void list_directory(Zziper* self, string dir_name, FILE *outfile)
     directory = opendir(dir_name);
     struct dirent *dir_record;
 
+    HeaderRecord record;
     static int i = 0;
     int len = 0;
 
@@ -57,7 +78,7 @@ void list_directory(Zziper* self, string dir_name, FILE *outfile)
                     strcat(path, "/");
                     strcat(path, dir_record->d_name);
 
-                    list_directory(self, path);
+                    list_directory(self, path, outfile);
                 }
                 else
                 {
@@ -65,11 +86,11 @@ void list_directory(Zziper* self, string dir_name, FILE *outfile)
                     len = strlen(file_name) + 1;
                     self->files = (string*)realloc(self->files, sizeof(string) * (i + 2));
                     self->files[i] = (string) malloc(len);
-
                     snprintf(self->files[i], len, "%s", file_name);
                     printf("%s %s\n", "Simple file: ", self->files[i]);
                     i++;
                     self->number_of_files ++;
+
                 }
 
             }

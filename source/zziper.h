@@ -9,17 +9,24 @@
 #include <stdlib.h>
 #include <dirent.h>
 
-typedef char* string;
 typedef unsigned long int uint;
-typedef  unsigned char* DumpFile;
 
-typedef struct InfoFile
+typedef char* string;
+string get_string(const char *in);
+
+typedef struct HeaderRecord
 {
     uint number_of_bytes;
     string name;
     string address;
 
-} InfoFile;
+    void (*destructor) (struct HeaderRecord*);
+    void (*add_to_output) (FILE*);
+} HeaderRecord;
+
+void destroy_record(HeaderRecord*);
+void add_to_record(HeaderRecord* self, FILE *outfile);
+HeaderRecord* HeaderRecord_creation (uint, string, string, void*, void*);
 
 typedef struct Zziper
 {
@@ -27,15 +34,14 @@ typedef struct Zziper
     string *files;
     string path;
     string file_name;
+    FILE* output_dump;
+
+    void (*searcher) (struct Zziper*, string);
+    void (*file_handler) (HeaderRecord* in);
+    void (*repr) ();
 
 } Zziper;
 
-string get_string(const char *in);
-
-
-void InfoFile_add(InfoFile *self, string name, uint number, string  address);
-
-void File_write(InfoFile* self, FILE *outfile);
 
 // Zziper methods
 void Zziper__init (Zziper* self);
