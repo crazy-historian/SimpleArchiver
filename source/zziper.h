@@ -17,7 +17,7 @@ string create_new_path(string, string);
 
 typedef struct HeaderRecord
 {
-    FILE* archiver_header;
+    FILE* archive_header;
     uint number_of_bytes;
     string file_name;
     string file_address;
@@ -55,7 +55,7 @@ typedef struct Zziper
 
 
 // Zziper methods
-Zziper* Zziper__creation (HeaderRecord*, void*, void*);
+Zziper* Zziper__creation (void*, void*);
 void Zziper_destruction(Zziper*);
 void list_directory(Zziper* self, string dir_name);
 void compress (Zziper* self);

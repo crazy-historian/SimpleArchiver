@@ -1,5 +1,8 @@
 #include "source/zziper.h"
 
+// TODO: класс HeaderRecord содержит указаетль на файл заголовка (done)
+// TODO: создать объявление record'a внутри конструктора Zziper'а (done)
+
 
 int main()
 {

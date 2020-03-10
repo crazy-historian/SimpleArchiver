@@ -24,8 +24,9 @@ string get_string(const char *in)
 string create_new_path(string file_name, string dir_name)
 {
     string path;
-    uint len = strlen(dir_name)+1;
-    path = malloc(len * 2);
+    uint len = strlen(dir_name) + 1;
+    len += strlen(file_name) + 2;
+    path = malloc(len);
     strcpy(path, dir_name);
     strcat(path, "\\");
     strcat(path, file_name);
@@ -97,7 +98,7 @@ void init_next_file(HeaderRecord* self, string file_name, string address)
  *
  */
 
-Zziper* Zziper__creation(HeaderRecord* record, void* searcher, void* destroy)
+Zziper* Zziper__creation( void* searcher, void* destroy)
 {
     Zziper* new = malloc(sizeof(Zziper));
     new->h_record = record;
@@ -117,6 +118,8 @@ void Zziper_destruction(Zziper* zip)
     free(zip);
 }
 
+// TODO: обработка исключений с целью выяснить, какие файлы не были открыты
+// TODO: проверить возможность переноса специальных структуры в Zziper
 void list_directory(Zziper* self, string dir_name)
 {
     DIR *directory;
