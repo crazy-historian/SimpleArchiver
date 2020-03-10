@@ -25,7 +25,7 @@ string create_new_path(string file_name, string dir_name)
 {
     string path;
     uint len = strlen(dir_name) + 1;
-    len += strlen(file_name) + 2;
+    len += strlen(file_name) + 3;
     path = malloc(len);
     strcpy(path, dir_name);
     strcat(path, "\\");
@@ -87,6 +87,7 @@ void init_next_file(HeaderRecord* self, string file_name, string address)
     self->file_address = address;
     string full_file_name = create_new_path(file_name, address);
     self->compute_file_size(self, full_file_name);
+    free(full_file_name);
 }
 
 /*
@@ -98,16 +99,18 @@ void init_next_file(HeaderRecord* self, string file_name, string address)
  *
  */
 
-Zziper* Zziper__creation( void* searcher, void* destroy)
+Zziper* Zziper__creation( void* searcher, void* destroy, void* add_to_dump)
 {
     Zziper* new = malloc(sizeof(Zziper));
     new->h_record = record;
     new->number_of_files = 0;
+    new->bytes = 0;
     new->archive_name = NULL;
     new->path = NULL;
 
     new->searcher = searcher;
     new->destructor = destroy;
+    new->add_to_dump = add_to_dump;
     return new;
 }
 
@@ -115,8 +118,10 @@ void Zziper_destruction(Zziper* zip)
 {
     printf("\nDestroy Zziper\n");
     printf("Files: %lu; Bytes: %lu", zip->number_of_files, zip->bytes);
+    fclose(zip->output_dump);
     free(zip);
 }
+
 
 // TODO: обработка исключений с целью выяснить, какие файлы не были открыты
 // TODO: проверить возможность переноса специальных структуры в Zziper
@@ -143,6 +148,7 @@ void list_directory(Zziper* self, string dir_name)
                     record->init_next_file (record, dir_record->d_name, dir_name);
                     record->add_to_header (record);
 
+                    self->add_to_dump(self, dir_record->d_name, dir_name);
                     self->number_of_files++;
                     self->bytes += record->number_of_bytes;
                 }
@@ -152,11 +158,16 @@ void list_directory(Zziper* self, string dir_name)
     }
 }
 
-void repr (Zziper* self)
+void add_to_dump (Zziper* self, string file_name, string dir_name)
 {
-    printf("\nThe list of scanned files\n");
-
-    for (uint i=0; i < self->number_of_files; i++)
-        printf("%s\n");
-
+    char byte[1];
+    string full_file_name = create_new_path(file_name, dir_name);
+    FILE* current_file = fopen(full_file_name, "rb");
+    while (!feof(current_file))
+    {
+        if (fread(byte,1, 1, current_file) == 1)
+            fwrite(byte, 1, 1, self->output_dump);
+    }
+    free(full_file_name);
+    fclose(current_file);
 }

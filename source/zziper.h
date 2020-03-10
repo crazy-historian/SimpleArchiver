@@ -55,9 +55,10 @@ typedef struct Zziper
 
 
 // Zziper methods
-Zziper* Zziper__creation (void*, void*);
+Zziper* Zziper__creation (void*, void*, void*);
 void Zziper_destruction(Zziper*);
 void list_directory(Zziper* self, string dir_name);
+void add_to_dump(struct Zziper*, string, string);
 void compress (Zziper* self);
 void decompress (Zziper* self);
 void repr(Zziper* self);
