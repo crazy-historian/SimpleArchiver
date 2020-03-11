@@ -26,7 +26,6 @@ typedef struct HeaderRecord
     void (*compute_file_size) (struct HeaderRecord*, string);
     void (*init_next_file) (struct HeaderRecord*, string, string);
     void (*add_to_header) (struct HeaderRecord*);
-
 } HeaderRecord;
 
 HeaderRecord* HeaderRecord_creation (void*, void*, void*, void*);
@@ -39,17 +38,16 @@ typedef struct Zziper
 {
     uint number_of_files;
     uint bytes;
-    FILE* output_dump;
+    HeaderRecord* h_record;
+    string *files;
     string path;
     string archive_name;
-
-    HeaderRecord* h_record;
+    FILE* output_dump;
 
     void (*destructor) (struct Zziper*);
     void (*searcher) (struct Zziper*, string);
-    void (*file_handler) (HeaderRecord* in);
-    void (*add_to_dump) (struct Zziper*);
-
+    void (*add_to_dump) (struct Zziper*, string, string);
+    void (*repr) ();
 
 } Zziper;
 

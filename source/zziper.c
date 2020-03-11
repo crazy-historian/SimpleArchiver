@@ -46,7 +46,7 @@ string create_new_path(string file_name, string dir_name)
 HeaderRecord* HeaderRecord_creation (void* destructor, void* add, void* compute_file_size, void* init_new_file)
 {
     HeaderRecord* new = malloc(sizeof(HeaderRecord));
-    new->archiver_header = fopen("header.txt", "w");
+    new->archive_header = fopen("header.txt", "w");
     new->file_name = NULL;
     new->file_address = NULL;
     new->number_of_bytes = 0;
@@ -60,14 +60,14 @@ HeaderRecord* HeaderRecord_creation (void* destructor, void* add, void* compute_
 void HeaderRecord_destruction(HeaderRecord* header)
 {
     printf("\nDestroy record\n");
-    fclose(header->archiver_header);
+    fclose(header->archive_header);
     free(header);
 }
 
 void add_to_header(HeaderRecord* self)
 {
     printf(("%s||%s||%lu\n"), self->file_name, self->file_address, self->number_of_bytes);
-    fprintf(self->archiver_header, ("%s||%s||%lu\n"), self->file_name, self->file_address, self->number_of_bytes);
+    fprintf(self->archive_header, ("%s||%s||%lu\n"), self->file_name, self->file_address, self->number_of_bytes);
 }
 
 void compute_file_size(HeaderRecord *self, string file_name)
@@ -91,7 +91,7 @@ void init_next_file(HeaderRecord* self, string file_name, string address)
 }
 
 /*
- *  Zziper methods:
+ *  Zipper methods:
  *
  *  1. constructor
  *  2. destructor
@@ -102,7 +102,10 @@ void init_next_file(HeaderRecord* self, string file_name, string address)
 Zziper* Zziper__creation( void* searcher, void* destroy, void* add_to_dump)
 {
     Zziper* new = malloc(sizeof(Zziper));
-    new->h_record = record;
+    new->h_record = HeaderRecord_creation(&HeaderRecord_destruction, &add_to_header,
+                                                                 &compute_file_size, &init_next_file);
+    new->output_dump = fopen("archive.bin", "wb");
+    new->files = (string*) malloc(sizeof(string));
     new->number_of_files = 0;
     new->bytes = 0;
     new->archive_name = NULL;
@@ -151,7 +154,9 @@ void list_directory(Zziper* self, string dir_name)
                     self->add_to_dump(self, dir_record->d_name, dir_name);
                     self->number_of_files++;
                     self->bytes += record->number_of_bytes;
+
                 }
+
             }
         }
         closedir(directory);
