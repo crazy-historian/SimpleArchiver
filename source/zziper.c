@@ -1,7 +1,6 @@
 //
 // Created by Professional on 08.03.2020.
 //
-
 #include "zziper.h"
 
 /*
@@ -11,15 +10,6 @@
  *  2. create new path for access to subdirectory
  *
  */
-
-string get_string(const char *in)
-{
-    string cmd;
-    uint len = strlen(in) + 1;
-    cmd = malloc(len);
-    snprintf(cmd, len,"%s", in);
-    return cmd;
-}
 
 string create_new_path(string file_name, string dir_name)
 {
@@ -43,13 +33,17 @@ string create_new_path(string file_name, string dir_name)
  *
  */
 
-HeaderRecord* HeaderRecord_creation (void* destructor, void* add, void* compute_file_size, void* init_new_file)
+HeaderRecord* HeaderRecord_creation (void* destructor, void* add, void* compute_file_size , void* init_new_file)
 {
     HeaderRecord* new = malloc(sizeof(HeaderRecord));
-    new->archive_header = fopen("header.txt", "w");
+    new->archive_header = fopen("header.bin", "wb");
+    // FIXME: размер uint - 4 это магическое число
+    fseek(new->archive_header, 4, SEEK_SET);
     new->file_name = NULL;
     new->file_address = NULL;
-    new->number_of_bytes = 0;
+    new->size_in_bytes = 0;
+
+
     new->compute_file_size = compute_file_size;
     new->destructor = destructor;
     new->add_to_header = add;
@@ -66,18 +60,22 @@ void HeaderRecord_destruction(HeaderRecord* header)
 
 void add_to_header(HeaderRecord* self)
 {
-    printf(("%s||%s||%lu\n"), self->file_name, self->file_address, self->number_of_bytes);
-    fprintf(self->archive_header, ("%s||%s||%lu\n"), self->file_name, self->file_address, self->number_of_bytes);
+    char sym[1] = "|";
+    fwrite(&self->size_in_bytes, 4, 1, self->archive_header); fwrite(sym, 1, 1, self->archive_header);
+    fwrite(self->file_name, strlen(self->file_name), 1,self->archive_header); fwrite(sym, 1, 1, self->archive_header);
+    sym[0] = '\n';
+    fwrite(self->file_address, strlen(self->file_address), 1, self->archive_header); fwrite(sym, 1, 1, self->archive_header);
+    //fprintf(self->archive_header, ("%s|%s|%lu\n"), self->file_name, self->file_address, self->size_in_bytes);
 }
-
-void compute_file_size(HeaderRecord *self, string file_name)
+uint compute_file_size(string file_name)
 {
     FILE *current_file;
-    current_file = fopen(file_name, "r");
+    uint size_in_bytes;
+    current_file = fopen(file_name, "rb");
     fseek(current_file, SEEK_SET, SEEK_END);
-    uint number = ftell(current_file);
-    self->number_of_bytes = number;
+    size_in_bytes = ftell(current_file);
     fclose(current_file);
+    return size_in_bytes;
 
 }
 
@@ -86,7 +84,7 @@ void init_next_file(HeaderRecord* self, string file_name, string address)
     self->file_name = file_name;
     self->file_address = address;
     string full_file_name = create_new_path(file_name, address);
-    self->compute_file_size(self, full_file_name);
+    self->size_in_bytes = self->compute_file_size(full_file_name);
     free(full_file_name);
 }
 
@@ -99,21 +97,20 @@ void init_next_file(HeaderRecord* self, string file_name, string address)
  *
  */
 
-Zziper* Zziper__creation( void* searcher, void* destroy, void* add_to_dump)
+Zziper* Zziper__creation(void* searcher, void* destroy, void* add_to_dump, void* read_dump, void* create_archive)
 {
     Zziper* new = malloc(sizeof(Zziper));
     new->h_record = HeaderRecord_creation(&HeaderRecord_destruction, &add_to_header,
                                                                  &compute_file_size, &init_next_file);
-    new->output_dump = fopen("archive.bin", "wb");
-    new->files = (string*) malloc(sizeof(string));
+    new->output_dump = fopen("dump.bin", "wb");
     new->number_of_files = 0;
     new->bytes = 0;
-    new->archive_name = NULL;
-    new->path = NULL;
 
     new->searcher = searcher;
     new->destructor = destroy;
     new->add_to_dump = add_to_dump;
+    new->create_archive = create_archive;
+    new->read_dump = read_dump;
     return new;
 }
 
@@ -121,7 +118,6 @@ void Zziper_destruction(Zziper* zip)
 {
     printf("\nDestroy Zziper\n");
     printf("Files: %lu; Bytes: %lu", zip->number_of_files, zip->bytes);
-    fclose(zip->output_dump);
     free(zip);
 }
 
@@ -153,7 +149,7 @@ void list_directory(Zziper* self, string dir_name)
 
                     self->add_to_dump(self, dir_record->d_name, dir_name);
                     self->number_of_files++;
-                    self->bytes += record->number_of_bytes;
+                    self->bytes += record->size_in_bytes;
 
                 }
 
@@ -161,6 +157,8 @@ void list_directory(Zziper* self, string dir_name)
         }
         closedir(directory);
     }
+    fclose(record->archive_header);
+    fclose(self->output_dump);
 }
 
 void add_to_dump (Zziper* self, string file_name, string dir_name)
@@ -173,6 +171,64 @@ void add_to_dump (Zziper* self, string file_name, string dir_name)
         if (fread(byte,1, 1, current_file) == 1)
             fwrite(byte, 1, 1, self->output_dump);
     }
-    free(full_file_name);
     fclose(current_file);
+    free(full_file_name);
+
+}/*
+ *  Алгоритм:
+ *  1. окрытие файла заголовка и файла-дампа
+ *  2. создание файла-архива
+ *  3. в файл-архив добавить размер заголовка
+ *  4. в файл-архив добавить заголовок
+ *  5. в файл-архив добавить дамп
+ *  6. закрыть файл-архив
+ */
+
+void create_archive (Zziper* self)
+
+{
+
+    self->output_dump = fopen("dump.bin", "rb");
+    self->h_record->archive_header = fopen("header.bin", "rb+");
+    fseek(self->h_record->archive_header, 0, SEEK_SET);
+    fwrite(&self->h_record->size_in_bytes, 4, 1, self->h_record->archive_header);
+
+
+
+
+
+
+    fclose(self->output_dump);
+    fclose(self->h_record->archive_header);
+
+}
+
+
+/*
+ * Алгоритм:
+ * 1. открыть файл
+ * 2. переместить указатель на нужную позицию
+ * 3. считать n байт
+ */
+void read_dump(struct Zziper* self, string full_file_name)
+{
+//    FILE* archive_file = fopen("header.txt", "r");
+//    int symbol;
+//    while((symbol = fgetc(archive_file))  != EOF)
+//    {
+//        printf("%c", symbol);
+//    }
+//    fclose(archive_file);
+    self->output_dump = fopen("archive.bin", "rb");
+    FILE* new_file = fopen("css_bin.htm", "wb");
+
+    string buffer = malloc(330);
+    fread(buffer, 330, 1, self->output_dump);
+   // int size = strlen(buffer);
+   // printf("File size: %d\n", size);
+    fwrite(buffer, 330, 1, new_file);
+    //free(buffer);
+    fclose(new_file);
+    fclose(self->output_dump);
+
 }

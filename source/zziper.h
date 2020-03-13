@@ -12,18 +12,17 @@
 typedef unsigned long int uint;
 
 typedef char* string;
-string get_string(const char *in);
 string create_new_path(string, string);
 
 typedef struct HeaderRecord
 {
     FILE* archive_header;
-    uint number_of_bytes;
+    uint size_in_bytes;
     string file_name;
     string file_address;
 
     void (*destructor) (struct HeaderRecord*);
-    void (*compute_file_size) (struct HeaderRecord*, string);
+    uint (*compute_file_size) (string);
     void (*init_next_file) (struct HeaderRecord*, string, string);
     void (*add_to_header) (struct HeaderRecord*);
 } HeaderRecord;
@@ -32,34 +31,33 @@ HeaderRecord* HeaderRecord_creation (void*, void*, void*, void*);
 void HeaderRecord_destruction(HeaderRecord*);
 void init_next_file (HeaderRecord*, string, string);
 void add_to_header(HeaderRecord* self);
-void compute_file_size(HeaderRecord*, string);
+uint compute_file_size(string);
 
 typedef struct Zziper
 {
     uint number_of_files;
     uint bytes;
     HeaderRecord* h_record;
-    string *files;
-    string path;
-    string archive_name;
     FILE* output_dump;
+    FILE* archive_file;
+
 
     void (*destructor) (struct Zziper*);
     void (*searcher) (struct Zziper*, string);
     void (*add_to_dump) (struct Zziper*, string, string);
+    void (*create_archive) (struct Zziper*);
+    void (*read_dump) (struct Zziper*, string);
     void (*repr) ();
 
 } Zziper;
 
 
 // Zziper methods
-Zziper* Zziper__creation (void*, void*, void*);
+Zziper* Zziper__creation (void*, void*, void*, void*, void*);
 void Zziper_destruction(Zziper*);
 void list_directory(Zziper* self, string dir_name);
-void add_to_dump(struct Zziper*, string, string);
-void compress (Zziper* self);
-void decompress (Zziper* self);
-void repr(Zziper* self);
-
+void create_archive (Zziper* self);
+void add_to_dump(Zziper*, string, string);
+void read_dump (Zziper*, string);
 
 #endif //SIMPLEARCHIVER_ZZIPER_H
