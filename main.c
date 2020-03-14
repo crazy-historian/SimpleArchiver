@@ -15,7 +15,6 @@ int main()
 
     Zziper* zip = Zziper__creation(&list_directory, &Zziper_destruction, &add_to_dump, &read_dump, &create_archive);
     zip->searcher(zip, "D:\\Web");
-    //zip->read_dump(zip, "output.txt");
     //zip->create_archive(zip);
     zip->read_dump(zip, "...");
     zip->destructor(zip);

@@ -9,11 +9,10 @@
 #include <stdlib.h>
 #include <dirent.h>
 
-typedef unsigned long int uint;
-
 typedef char* string;
 string create_new_path(string, string);
-
+string concatenate(string, string, string);
+string cut_substring(string);
 typedef struct HeaderRecord
 {
     FILE* archive_header;
@@ -36,12 +35,11 @@ size_t compute_file_size(string);
 
 typedef struct Zziper
 {
-    uint number_of_files;
-    uint size_in_bytes;
+    size_t number_of_files;
+    size_t size_in_bytes;
     HeaderRecord* h_record;
     FILE* output_dump;
     FILE* archive_file;
-
 
     void (*destructor) (struct Zziper*);
     void (*searcher) (struct Zziper*, string);

@@ -6,21 +6,29 @@
 /*
  *  String methods:
  *
- *  1. get new unknown len string
- *  2. create new path for access to subdirectory
- *
+
  */
 
 string create_new_path(string file_name, string dir_name)
 {
     string path;
-    uint len = strlen(dir_name) + 1;
+    size_t len = strlen(dir_name) + 1;
     len += strlen(file_name) + 3;
     path = malloc(len);
     strcpy(path, dir_name);
     strcat(path, "\\");
     strcat(path, file_name);
     return path;
+}
+
+string concatenate(string first, string second, string third)
+{
+    size_t len = strlen(first) + strlen(second) + strlen(third) + 1;
+    string new_string = (string) malloc(len);
+    strcpy(new_string, first);
+    strcpy(new_string, first);
+    strcpy(new_string, first);
+    return new_string;
 }
 
 /* HeaderRecord methods:
@@ -128,26 +136,26 @@ void list_directory(Zziper* self, string dir_name)
 {
     DIR *directory;
     directory = opendir(dir_name);
-    struct dirent *dir_record;
+    struct dirent *record_in_dir;
     HeaderRecord* record = self->h_record;
 
     if (directory)
     {
-        while ((dir_record = readdir(directory)) != NULL)
+        while ((record_in_dir = readdir(directory)) != NULL)
         {
-            if (strcmp(dir_record->d_name, ".") != 0 && strcmp(dir_record->d_name, "..") != 0)
+            if (strcmp(record_in_dir->d_name, ".") != 0 && strcmp(record_in_dir->d_name, "..") != 0)
             {
-                if (dir_record->d_type == DT_DIR)
+                if (record_in_dir->d_type == DT_DIR)
                 {
-                    string path = create_new_path(dir_record->d_name, dir_name);
+                    string path = create_new_path(record_in_dir->d_name, dir_name);
                     list_directory(self, path);
                 }
                 else
                 {
-                    record->init_next_file (record, dir_record->d_name, dir_name);
+                    record->init_next_file (record, record_in_dir->d_name, dir_name);
                     record->add_to_header (record);
 
-                    self->add_to_dump(self, dir_record->d_name, dir_name);
+                    self->add_to_dump(self, record_in_dir->d_name, dir_name);
                     self->number_of_files++;
                     self->size_in_bytes += record->file_size_in_bytes;
 
@@ -213,86 +221,42 @@ void create_archive (Zziper* self)
  */
 void read_dump(struct Zziper* self, string full_file_name)
 {
-    FILE* dump = fopen("header.bin", "rb");
+    FILE *dump = fopen("header.bin", "rb");
     size_t string_size = 0;
     int byte;
 
-    for (; ;)
+    for (;;)
     {
-        long int* number = malloc(sizeof(long int));
+        long int *number = malloc(sizeof(long int));
         // FIXME: проверка количества прочтенных элементов
         size_t num = fread(number, 1, 4, dump);
         if (!num)
-        {
-            return;
-        }
-        printf("\nNumber: %li\n", *(number));
-        size_t pointer = ftell(dump);
-        printf("Pointer after number: %d\n", pointer);
-        free(number);
-
-        for (; ;)
-        {
-            byte = fgetc(dump);
-            string_size ++;
-            if (byte == '\n')
+        { return;}
+        else
             {
-                string_size --;
-                string buffer = malloc(string_size * sizeof(char));
-                fseek(dump, -string_size, SEEK_CUR);
-                fread(buffer, 1, string_size, dump);
-                buffer[string_size-1] = '\0';
-                printf("String: %s", buffer);
+                printf("\nNumber: %li\n", *(number));
+                free(number);
 
-                string_size = 0;
-                free(buffer);
-                break;
+                for (;;)
+                {
+                    byte = fgetc(dump);
+                    string_size++;
+                    if (byte == '\n') {
+                        string_size--;
+                        string buffer = malloc(string_size * sizeof(char));
+                        fseek(dump, -string_size, SEEK_CUR);
+                        fread(buffer, 1, string_size, dump);
+                        buffer[string_size - 1] = '\0';
+                        printf("String: %s", buffer);
+
+                        string_size = 0;
+                        free(buffer);
+                        break;
+                    } else if (byte == EOF)
+                        return;
+                }
             }
-            else if (byte == EOF)
-                return;
-        }
 
     }
 
-//    while ((byte = fgetc(dump)) != EOF)
-//    {
-//        long int* number = malloc(sizeof(long int));
-//        fread(number, 1, 4, dump);
-//        printf("Number: %li\n", *(number));
-//        size_t pointer = ftell(dump);
-//        printf("%d\n", pointer);
-//        free(number);
-//
-//        if (byte == '|')
-//        {
-//            while((byte=fgetc(dump)) != '\n')
-//            {
-//                string_size ++;
-//            }
-//            string buffer = malloc(string_size);
-//            fseek(dump, -string_size, SEEK_CUR);
-//            fread(buffer, 1, string_size, dump);
-//            printf("String: %s\n", buffer);
-//            free(buffer);
-//        }
-//    }
 }
-//            unsigned char* buffer = malloc(string_size+1);
-//            string tokens = malloc(string_size);
-//
-//            fseek(dump, -string_size, SEEK_CUR);
-//            size_t pointer = ftell(dump);
-//            printf("%d\n", pointer);
-//
-//            fread(buffer, 1, string_size, dump);
-//            printf("String %s\n", buffer);
-//            pointer = ftell(dump);
-//            printf("%d\n", pointer);
-//
-//
-//            tokens = strtok(buffer, "|");
-//            printf("Tokens:%s\n", tokens);
-//
-//            free(buffer);
-//            free(tokens);
-//            string_size = 0;
