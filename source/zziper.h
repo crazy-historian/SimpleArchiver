@@ -17,12 +17,13 @@ string create_new_path(string, string);
 typedef struct HeaderRecord
 {
     FILE* archive_header;
-    uint size_in_bytes;
+    size_t header_size_in_bytes;
+    size_t file_size_in_bytes;
     string file_name;
     string file_address;
 
     void (*destructor) (struct HeaderRecord*);
-    uint (*compute_file_size) (string);
+    size_t (*compute_file_size) (string);
     void (*init_next_file) (struct HeaderRecord*, string, string);
     void (*add_to_header) (struct HeaderRecord*);
 } HeaderRecord;
@@ -31,12 +32,12 @@ HeaderRecord* HeaderRecord_creation (void*, void*, void*, void*);
 void HeaderRecord_destruction(HeaderRecord*);
 void init_next_file (HeaderRecord*, string, string);
 void add_to_header(HeaderRecord* self);
-uint compute_file_size(string);
+size_t compute_file_size(string);
 
 typedef struct Zziper
 {
     uint number_of_files;
-    uint bytes;
+    uint size_in_bytes;
     HeaderRecord* h_record;
     FILE* output_dump;
     FILE* archive_file;
