@@ -4,32 +4,29 @@
 #include "zziper.h"
 
 /*
- *  String methods:
+ *  STRING METHODS:
+ *  1. concatenate three strings
+ *  2. clib substring  from main string
  *
-
  */
-
-string create_new_path(string file_name, string dir_name)
-{
-    string path;
-    size_t len = strlen(dir_name) + 1;
-    len += strlen(file_name) + 3;
-    path = malloc(len);
-    strcpy(path, dir_name);
-    strcat(path, "\\");
-    strcat(path, file_name);
-    return path;
-}
 
 string concatenate(string first, string second, string third)
 {
     size_t len = strlen(first) + strlen(second) + strlen(third) + 1;
     string new_string = (string) malloc(len);
     strcpy(new_string, first);
-    strcpy(new_string, first);
-    strcpy(new_string, first);
+    strcat(new_string, second);
+    strcat(new_string, third);
     return new_string;
 }
+
+
+string clip_substring(string main, string sub)
+{
+    string clipped = &main[strlen(sub)];
+    return clipped;
+}
+
 
 /* HeaderRecord methods:
  *
@@ -87,28 +84,36 @@ size_t compute_file_size(string file_name)
 
 }
 
-void init_next_file(HeaderRecord* self, string file_name, string address)
+void init_next_file(HeaderRecord* self, string file_name, string address, string root_directory)
 {
     self->file_name = file_name;
-    self->file_address = address;
-    string full_file_name = create_new_path(file_name, address);
-    self->file_size_in_bytes = self->compute_file_size(full_file_name);
+    string clipped_address = clip_substring(address, root_directory);
+    self->file_address = clipped_address;
+    //string full_file_name = create_new_path(file_name, address);
+    string dump_file_name = concatenate(address, "\\", file_name);
+    self->file_size_in_bytes = self->compute_file_size(dump_file_name);
     self->header_size_in_bytes += self->file_size_in_bytes;
-    free(full_file_name);
+    free(dump_file_name);
 }
 
 /*
- *  Zipper methods:
+ *  ZZIPER METHODS:
  *
  *  1. constructor
  *  2. destructor
  *  3. recursive list traversal
+ *  4. add file in directory to dump
+ *  5. merge header and dump
+ *  6. read dump
+ *  7. unpack file from dump
  *
  */
 
-Zziper* Zziper__creation(void* searcher, void* destroy, void* add_to_dump, void* read_dump, void* create_archive)
+Zziper* Zziper__creation(string root_directory, void* searcher, void* destroy,
+        void* add_to_dump, void* read_dump, void* merge)
 {
     Zziper* new = malloc(sizeof(Zziper));
+    new->root_directory = root_directory;
     new->h_record = HeaderRecord_creation(&HeaderRecord_destruction, &add_to_header,
                                                                  &compute_file_size, &init_next_file);
     new->output_dump = fopen("dump.bin", "wb");
@@ -118,7 +123,7 @@ Zziper* Zziper__creation(void* searcher, void* destroy, void* add_to_dump, void*
     new->searcher = searcher;
     new->destructor = destroy;
     new->add_to_dump = add_to_dump;
-    new->create_archive = create_archive;
+    new->merge = merge;
     new->read_dump = read_dump;
     return new;
 }
@@ -126,7 +131,7 @@ Zziper* Zziper__creation(void* searcher, void* destroy, void* add_to_dump, void*
 void Zziper_destruction(Zziper* zip)
 {
     printf("\nDestroy Zziper\n");
-    printf("Files: %lu; Bytes: %lu", zip->number_of_files, zip->size_in_bytes);
+    printf("Files: %zu; Bytes: %zu", zip->number_of_files, zip->size_in_bytes);
     free(zip);
 }
 
@@ -147,12 +152,13 @@ void list_directory(Zziper* self, string dir_name)
             {
                 if (record_in_dir->d_type == DT_DIR)
                 {
-                    string path = create_new_path(record_in_dir->d_name, dir_name);
+                    //string path = create_new_path(record_in_dir->d_name, dir_name);
+                    string path = concatenate(dir_name, "\\", record_in_dir->d_name);
                     list_directory(self, path);
                 }
                 else
                 {
-                    record->init_next_file (record, record_in_dir->d_name, dir_name);
+                    record->init_next_file (record, record_in_dir->d_name, dir_name, self->root_directory);
                     record->add_to_header (record);
 
                     self->add_to_dump(self, record_in_dir->d_name, dir_name);
@@ -172,7 +178,9 @@ void list_directory(Zziper* self, string dir_name)
 void add_to_dump (Zziper* self, string file_name, string dir_name)
 {
     char byte[1];
-    string full_file_name = create_new_path(file_name, dir_name);
+    //string full_file_name = create_new_path(file_name, dir_name);
+    string full_file_name = concatenate(dir_name, "\\", file_name);
+
     FILE* current_file = fopen(full_file_name, "rb");
     while (!feof(current_file) && !ferror(current_file))
     {
@@ -192,7 +200,7 @@ void add_to_dump (Zziper* self, string file_name, string dir_name)
  *  6. закрыть файл-архив
  */
 
-void create_archive (Zziper* self)
+void merge (Zziper* self)
 {
     self->output_dump = fopen("dump.bin", "rb");
     self->h_record->archive_header = fopen("header.bin", "rb+");
@@ -212,13 +220,6 @@ void create_archive (Zziper* self)
     fclose(dump);
 }
 
-
-/*
- * Алгоритм:
- * 1. открыть файл
- * 2. переместить указатель на нужную позицию
- * 3. считать n байт
- */
 void read_dump(struct Zziper* self, string full_file_name)
 {
     FILE *dump = fopen("header.bin", "rb");
@@ -241,7 +242,8 @@ void read_dump(struct Zziper* self, string full_file_name)
                 {
                     byte = fgetc(dump);
                     string_size++;
-                    if (byte == '\n') {
+                    if (byte == '\n')
+                    {
                         string_size--;
                         string buffer = malloc(string_size * sizeof(char));
                         fseek(dump, -string_size, SEEK_CUR);
@@ -258,5 +260,12 @@ void read_dump(struct Zziper* self, string full_file_name)
             }
 
     }
+
+}
+
+void file_from_dump (Zziper* self, size_t file_size, string name, string address)
+{
+    /* DEBUG VARIANT  */
+
 
 }

@@ -4,19 +4,21 @@
 // TODO: создать объявление record'a внутри конструктора Zziper'а (done)
 // TODO: запись бинарного файла (done)
 // TODO: контроль открытия/закрытия файлов
-// TODO: реализовать примитивный парсер бинарного файла без буфера в виде string
+// TODO: реализовать примитивный парсер бинарного файла без буфера в виде string (done)
 // TODO: октрытие закрытие бинарных файлов через имена, хранящиеся в структурах
+// TODO: как передавать информацию о корневой директории в заголовок (возможно, через символ ".")
+// TODO: создать рекурсивный обход строки, содержащую полное распожоление разахивированного файла
+// TODO: предусмотреть повторяющиеся пути
 
 
 int main()
 {
 
-
-
-    Zziper* zip = Zziper__creation(&list_directory, &Zziper_destruction, &add_to_dump, &read_dump, &create_archive);
+    Zziper* zip = Zziper__creation("D:\\Web", &list_directory, &Zziper_destruction, &add_to_dump, &read_dump, &merge);
     zip->searcher(zip, "D:\\Web");
-    //zip->create_archive(zip);
-    zip->read_dump(zip, "...");
     zip->destructor(zip);
+
+
+
 
 }
