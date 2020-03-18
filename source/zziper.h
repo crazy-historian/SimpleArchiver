@@ -13,6 +13,19 @@ typedef char* string;
 string create_new_path(string, string);
 string concatenate(string, string, string);
 string clip_substring(string, string);
+string* tokenization(string, string);
+string concatenate_path(string*, string);
+
+typedef struct string_list
+{
+    size_t size;
+    string* list;
+
+} string_list;
+
+string_list* tokenization_(string);
+void free_string_list(string_list*);
+
 typedef struct HeaderRecord
 {
     FILE* archive_header;

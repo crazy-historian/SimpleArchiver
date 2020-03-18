@@ -20,6 +20,27 @@ string concatenate(string first, string second, string third)
     return new_string;
 }
 
+string concatenate_path (string* tokens, string symbol)
+{
+    size_t size = strlen(tokens) + 1;
+    size_t len = strlen(tokens[0]) + 2;
+    string path = (string) malloc (len);
+
+    strcpy(path, tokens[0]);
+    strcat(path,symbol);
+
+    for(size_t i = 1; i < size; i++)
+        {
+            len += strlen(tokens[i]) + 2;
+            path = realloc (path, len);
+            strcat(path, tokens[i]);
+            strcat(path, symbol);
+        }
+
+    printf("%s", path);
+    free(path);
+
+}
 
 string clip_substring(string main, string sub)
 {
@@ -27,8 +48,41 @@ string clip_substring(string main, string sub)
     return clipped;
 }
 
+string* tokenization (string main, string symbol)
+{
+    string main_copy = strdup(main);
+    int number_of_tokens = 0;
+    for (size_t i = 0; i < strlen(main_copy); i++)
+        if ((int) main_copy[i] == (int)*(symbol))
+            number_of_tokens++;
+    number_of_tokens++;
+    string* tokens = (string*) malloc(number_of_tokens * sizeof(string));
 
-/* HeaderRecord methods:
+    int counter = 0;
+    string token = strtok(main_copy, symbol);
+    while (token != NULL)
+    {
+        size_t token_size = strlen(token);
+        tokens[counter] = (string)malloc(token_size+1);
+        tokens[counter] = token;
+        token = strtok(NULL, symbol);
+        counter ++;
+    }
+
+    for (int i = 0; i < number_of_tokens; i++)
+        printf("%s, ", tokens[i]);
+    return tokens;
+}
+
+int check_address(string address)
+{
+    DIR *new_dir;
+    new_dir = opendir(address);
+    if (new_dir)
+        return 1;
+    else return -1;
+}
+/* HEADER_RECORD METHODS:
  *
  *  1. constructor
  *  2. destructor
@@ -266,6 +320,7 @@ void read_dump(struct Zziper* self, string full_file_name)
 void file_from_dump (Zziper* self, size_t file_size, string name, string address)
 {
     /* DEBUG VARIANT  */
+    // directory checking
 
 
 }
