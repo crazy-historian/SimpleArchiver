@@ -14,13 +14,17 @@
 int main()
 {
 
-     //Zziper* zip = Zziper__creation("D:\\Web", &list_directory, &Zziper_destruction, &add_to_dump, &read_dump, &merge);
-//    zip->searcher(zip, "D:\\Web");
-//    zip->destructor(zip);
+    Zziper* zip = Zziper__creation("D:\\Web", &list_directory, &Zziper_destruction, &add_to_dump, &read_dump, &merge);
+    zip->searcher(zip, "D:\\Web");
     //file_from_dump(zip, 0, "", "D:\\Web\\HTML\\myfirstpage");
-   string* tokens = tokenization("D:\\Web\\HTML\\myfirstpage", "\\");
-   concatenate_path(tokens, "\\");
-   free(tokens);
+    zip->merge(zip);
+    zip->read_dump(zip, "...");
+
+    //string_list* tokens = tokenization("K:\\Web\\HTML\\myfirstpage", "\\");
+    //concatenate_path(tokens, "\\");
+    //create_directory(zip,  tokens);
+    //free_string_list(tokens);
+    zip->destructor(zip);
 
 
 }
